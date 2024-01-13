@@ -98,7 +98,7 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_MWEB].nTimeoutHeight = 2427264; // 364 days later
 
         consensus.nMinimumChainWork = uint256S("0x0");
-        consensus.defaultAssumeValid = uint256S("0x7207c10a2953745431bc856edeab5577ed42e213bba9b3b6b44c438cd64cd7ff"); // 2186382
+        consensus.defaultAssumeValid = uint256S("0xd048387a7efe581fdffca1d6819a4ff26dc80dd8459ca09a19e27867356d917a"); // 2186382
 
         /**
          * The message start string is designed to be unlikely to occur in normal data.
