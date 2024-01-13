@@ -136,7 +136,7 @@ Documentation
   about how to secure this interface.
 
 - A new [document](https://github.com/fairbrix-project/fairbrix/blob/master/doc/fairbrix-conf.md)
-  about the `fairbrix.conf` file describes how to use it to configure
+  about the `fbx.conf` file describes how to use it to configure
   Fairbrix Core.
 
 - A new document introduces Fairbrix Core's BIP174 [Partially-Signed

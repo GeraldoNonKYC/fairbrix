@@ -109,9 +109,9 @@ Before running, you may create an empty configuration file:
 ```shell
 mkdir -p "/Users/${USER}/Library/Application Support/Fairbrix"
 
-touch "/Users/${USER}/Library/Application Support/Fairbrix/fairbrix.conf"
+touch "/Users/${USER}/Library/Application Support/Fairbrix/fbx.conf"
 
-chmod 600 "/Users/${USER}/Library/Application Support/Fairbrix/fairbrix.conf"
+chmod 600 "/Users/${USER}/Library/Application Support/Fairbrix/fbx.conf"
 ```
 
 The first time you run fairbrixd, it will start downloading the blockchain. This process could
