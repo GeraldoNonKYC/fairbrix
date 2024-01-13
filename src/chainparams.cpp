@@ -14,7 +14,7 @@
 #include <versionbitsinfo.h>
 
 #include <assert.h>
-
+#include <limits>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
 
@@ -68,14 +68,14 @@ public:
         consensus.signet_blocks = false;
         consensus.signet_challenge.clear();
         consensus.nSubsidyHalvingInterval = 840000;
-        consensus.BIP16Height = 218579; // 87afb798a3ad9378fcd56123c81fb31cfd9a8df4719b9774d71730c16315a092 - October 1, 2012
-        consensus.BIP34Height = 710000;
+        consensus.BIP16Height = std::numeric_limits<int>::max(); // 87afb798a3ad9378fcd56123c81fb31cfd9a8df4719b9774d71730c16315a092 - October 1, 2012
+        consensus.BIP34Height = std::numeric_limits<int>::max();
         consensus.BIP34Hash = uint256S("0xfa09d204a83a768ed5a7c8d441fa62f2043abf420cff1226c7b4329aeb9d51cf");
-        consensus.BIP65Height = 918684; // bab3041e8977e0dc3eeff63fe707b92bde1dd449d8efafb248c27c8264cc311a
-        consensus.BIP66Height = 811879; // 7aceee012833fa8952f8835d8b1b3ae233cd6ab08fdb27a771d2bd7bdc491894
-        consensus.CSVHeight = 1201536; // 53e0af7626f7f51ce9f3b6cfc36508a5b1d2f6c4a75ac215dc079442692a4c0b
-        consensus.SegwitHeight = 1201536; // 0000000000000000001c8018d9cb3b742ef25114f27563e3fc4a1902167f9893
-        consensus.MinBIP9WarningHeight = 1209600; // segwit activation height + miner confirmation window
+        consensus.BIP65Height = std::numeric_limits<int>::max(); // bab3041e8977e0dc3eeff63fe707b92bde1dd449d8efafb248c27c8264cc311a
+        consensus.BIP66Height = std::numeric_limits<int>::max(); // 7aceee012833fa8952f8835d8b1b3ae233cd6ab08fdb27a771d2bd7bdc491894
+        consensus.CSVHeight = std::numeric_limits<int>::max(); // 53e0af7626f7f51ce9f3b6cfc36508a5b1d2f6c4a75ac215dc079442692a4c0b
+        consensus.SegwitHeight = std::numeric_limits<int>::max(); // 0000000000000000001c8018d9cb3b742ef25114f27563e3fc4a1902167f9893
+        consensus.MinBIP9WarningHeight = std::numeric_limits<int>::max(); // segwit activation height + miner confirmation window
         consensus.powLimit = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nPowTargetTimespan = 7 * 24 * 60 * 60; // one week
         consensus.nPowTargetSpacing = 5 * 60;
@@ -97,8 +97,8 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_MWEB].nStartHeight = 2217600; // End Feb 2022
         consensus.vDeployments[Consensus::DEPLOYMENT_MWEB].nTimeoutHeight = 2427264; // 364 days later
 
-        consensus.nMinimumChainWork = uint256S("0x000000000000000000000000000000000000000000000702edaa57d42a9fd9e2");
-        consensus.defaultAssumeValid = uint256S("0x62e2e3d21343a00994d38a63524867507dbeee6850e8fbf02e9c47a3ccf82f24"); // 2186382
+        consensus.nMinimumChainWork = uint256S("0x0");
+        consensus.defaultAssumeValid = uint256S("0x7207c10a2953745431bc856edeab5577ed42e213bba9b3b6b44c438cd64cd7ff"); // 2186382
 
         /**
          * The message start string is designed to be unlikely to occur in normal data.
@@ -176,9 +176,9 @@ public:
 
         chainTxData = ChainTxData{
             // Data from rpc: getchaintxstats 4096 62e2e3d21343a00994d38a63524867507dbeee6850e8fbf02e9c47a3ccf82f24
-            /* nTime    */ 1375631575,
-            /* nTxCount */ 166597,
-            /* dTxRate  */ 300.0
+            /* nTime    */ 1317529878,
+            /* nTxCount */ 1,
+            /* dTxRate  */ 1.0
         };
     }
 };

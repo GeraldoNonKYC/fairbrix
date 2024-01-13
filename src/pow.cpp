@@ -6,14 +6,19 @@
 #include <pow.h>
 
 #include <arith_uint256.h>
+#include <bignum.h>
 #include <chain.h>
 #include <primitives/block.h>
 #include <uint256.h>
+#include <logging.h>
 
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params)
 {
-    assert(pindexLast != nullptr);
-    unsigned int nProofOfWorkLimit = UintToArith256(params.powLimit).GetCompact();
+    static CBigNum bnProofOfWorkLimit(params.powLimit);
+
+    // Genesis block
+    if (pindexLast == NULL)
+        return bnProofOfWorkLimit.GetCompact();
 
     // Only change once per difficulty adjustment interval
     if ((pindexLast->nHeight+1) % params.DifficultyAdjustmentInterval() != 0)
@@ -24,12 +29,12 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
             // If the new block's timestamp is more than 2* 10 minutes
             // then allow mining of a min-difficulty block.
             if (pblock->GetBlockTime() > pindexLast->GetBlockTime() + params.nPowTargetSpacing*2)
-                return nProofOfWorkLimit;
+                return bnProofOfWorkLimit.GetCompact();
             else
             {
                 // Return the last non-special-min-difficulty-rules-block
                 const CBlockIndex* pindex = pindexLast;
-                while (pindex->pprev && pindex->nHeight % params.DifficultyAdjustmentInterval() != 0 && pindex->nBits == nProofOfWorkLimit)
+                while (pindex->pprev && pindex->nHeight % params.DifficultyAdjustmentInterval() != 0 && pindex->nBits == bnProofOfWorkLimit.GetCompact())
                     pindex = pindex->pprev;
                 return pindex->nBits;
             }
@@ -51,7 +56,28 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
 
     assert(pindexFirst);
 
-    return CalculateNextWorkRequired(pindexLast, pindexFirst->GetBlockTime(), params);
+    // Limit adjustment step
+    int64_t nActualTimespan = pindexLast->GetBlockTime() - pindexFirst->GetBlockTime();
+    if (nActualTimespan < params.nPowTargetTimespan/4)
+        nActualTimespan = params.nPowTargetTimespan/4;
+    if (nActualTimespan > params.nPowTargetTimespan*4)
+        nActualTimespan = params.nPowTargetTimespan*4;
+
+    // Retarget
+    CBigNum bnNew;
+    bnNew.SetCompact(pindexLast->nBits);
+    bnNew *= nActualTimespan;
+    bnNew /= params.nPowTargetTimespan;
+
+    if (bnNew > bnProofOfWorkLimit)
+        bnNew = bnProofOfWorkLimit;
+
+    /// debug print
+    LogPrintf("GetNextWorkRequired RETARGET\n");
+    LogPrintf("params.nPowTargetTimespan = %d    nActualTimespan = %d\n", params.nPowTargetTimespan, nActualTimespan);
+    return bnNew.GetCompact();
+
+//    return CalculateNextWorkRequired(pindexLast, pindexFirst->GetBlockTime(), params);
 }
 
 unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nFirstBlockTime, const Consensus::Params& params)
@@ -84,6 +110,11 @@ unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nF
     if (bnNew > bnPowLimit)
         bnNew = bnPowLimit;
 
+    /// debug print
+    LogPrintf("GetNextWorkRequired RETARGET\n");
+    LogPrintf("params.nPowTargetTimespan = %d    nActualTimespan = %d\n", params.nPowTargetTimespan, nActualTimespan);
+    LogPrintf("Before: %08x  %s\n", pindexLast->nBits, bnOld.ToString());
+    LogPrintf("After:  %08x  %s\n", bnNew.GetCompact(), bnNew.ToString());
     return bnNew.GetCompact();
 }
 
