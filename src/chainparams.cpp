@@ -97,7 +97,7 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_MWEB].nStartHeight = 2217600; // End Feb 2022
         consensus.vDeployments[Consensus::DEPLOYMENT_MWEB].nTimeoutHeight = 2427264; // 364 days later
 
-        consensus.nMinimumChainWork = uint256S("0x0");
+        consensus.nMinimumChainWork = uint256S("0x00000000000000000000000000000000000000000000000000001427bd1ae9f7"); // 785494
         consensus.defaultAssumeValid = uint256S("0xd048387a7efe581fdffca1d6819a4ff26dc80dd8459ca09a19e27867356d917a"); // 2186382
 
         /**
