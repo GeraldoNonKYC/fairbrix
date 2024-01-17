@@ -1,0 +1,258 @@
+name: 📦🧪 Build & Test
+
+on:
+  workflow_dispatch:
+  push:
+    paths-ignore:
+      - '**/*.md'
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
+  pull_request:
+    paths-ignore:
+      - 'doc/**'
+      - 'contrib/**'
+      - '**/*.md'
+  release:
+    types: [published]
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}-${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/version') || (github.ref == 'refs/heads/dev')) && github.sha || '' }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+
+    env:
+      MAKEJOBS: "-j4"
+      CHECK_DOC: "0"
+      CCACHE_SIZE: "100M"
+      CCACHE_TEMPDIR: /tmp/.ccache-temp
+      CCACHE_COMPRESS: "1"
+      PYTHON_DEBUG: "1"
+      CACHE_NONCE: "1"
+      WINEDEBUG: fixme-all
+
+    strategy:
+      fail-fast: false
+      matrix:
+        name:
+          - aarch64-linux
+          - aarch64-linux-experimental
+          - aarch64-linux-sha512-experimental
+          - x86_64-linux-dbg
+          - x86_64-linux-nowallet
+          - x86_64-win
+          - x86_64-linux-experimental
+        include:
+          - name: aarch64-linux-experimental
+            host: aarch64-linux-gnu
+            os: ubuntu-22.04
+            packages: g++-aarch64-linux-gnu
+            run-bench: false
+            run-tests: false
+            check-security: true
+            check-symbols: false
+            dep-opts: "NO_QT=1"
+            config-opts: "--with-armv8-crypto --enable-zmq --enable-glibc-back-compat --disable-tests LDFLAGS=-static-libstdc++"
+            goal: install
+          - name: aarch64-linux-sha512-experimental
+            host: aarch64-linux-gnu
+            os: ubuntu-22.04
+            packages: g++-aarch64-linux-gnu
+            run-bench: false
+            run-tests: false
+            check-security: true
+            check-symbols: false
+            dep-opts: "NO_QT=1"
+            config-opts: "--with-armv82-crypto --enable-zmq --enable-glibc-back-compat --disable-tests LDFLAGS=-static-libstdc++"
+            goal: install
+          - name: aarch64-linux
+            host: aarch64-linux-gnu
+            os: ubuntu-22.04
+            packages: g++-aarch64-linux-gnu
+            run-bench: false
+            run-tests: false
+            check-security: true
+            check-symbols: false
+            dep-opts: "NO_QT=1"
+            config-opts: "--enable-zmq --enable-glibc-back-compat --disable-tests LDFLAGS=-static-libstdc++"
+            goal: install
+          - name: x86_64-linux-nowallet
+            host: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+            packages: python3
+            run-bench: true
+            run-tests: false
+            check-security: true
+            check-symbols: false
+            dep-opts: "NO_WALLET=1"
+            config-opts: "--enable-gui=qt5 --enable-glibc-back-compat --disable-wallet LDFLAGS=-static-libstdc++"
+            goal: install
+          - name: x86_64-linux-dbg
+            host: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+            packages: bc python3-zmq
+            run-bench: true
+            run-tests: false
+            check-security: true
+            check-symbols: false
+            dep-opts: "DEBUG=1"
+            config-opts: "--enable-gui=qt5 --enable-zmq --enable-glibc-back-compat CPPFLAGS=-DDEBUG_LOCKORDER"
+            goal: install
+          - name: x86_64-win
+            host: x86_64-w64-mingw32
+            os: ubuntu-22.04
+            packages: python3 nsis g++-mingw-w64-x86-64 wine64 bc wine-binfmt
+            postinstall: |
+              sudo dpkg -s mono-runtime && sudo apt-get remove mono-runtime || echo "Very nothing to uninstall."
+              sudo update-alternatives --set x86_64-w64-mingw32-gcc  /usr/bin/x86_64-w64-mingw32-gcc-posix
+              sudo update-alternatives --set x86_64-w64-mingw32-g++  /usr/bin/x86_64-w64-mingw32-g++-posix
+              sudo update-binfmts --import /usr/share/binfmts/wine
+            run-bench: false
+            run-tests: false
+            check-security: false
+            check-symbols: false
+            dep-opts: ""
+            config-opts: "--enable-gui=qt5"
+            goal: install
+          - name: x86_64-linux-experimental
+            host: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+            packages: bc python3-zmq
+            run-bench: true
+            run-tests: false
+            dep-opts: "AVX2=1"
+            config-opts: "--with-intel-avx2 --enable-gui=qt5 --enable-zmq --enable-glibc-back-compat --enable-reduce-exports"
+            goal: install
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Install packages
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            automake \
+            autotools-dev \
+            bison \
+            bsdmainutils \
+            build-essential \
+            ca-certificates \
+            ccache \
+            curl \
+            git \
+            libtool \
+            pkg-config \
+            procps \
+            python3 \
+            rsync \
+            ${{ matrix.packages }}
+      - name: Post install
+        if: ${{ matrix.postinstall }}
+        run: ${{ matrix.postinstall }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dependency cache
+        uses: actions/cache@v3
+        env:
+          cache-name: depends
+        with:
+          path: ./depends/built
+          key: ${{ matrix.name }}-${{ env.cache-name }}-${{ hashFiles('depends/packages/*', '.github/workflows/build-test.yml') }}
+
+      - name: Build depends
+        shell: bash
+        run: |
+          make "$MAKEJOBS" -C depends HOST=${{ matrix.host }} ${{ matrix.dep-opts }}
+      - name: CCache
+        uses: actions/cache@v3
+        env:
+          cache-name: ccache
+        with:
+          path: ~/.ccache
+          key: ${{ matrix.name }}-${{ env.cache-name }}-${{ hashFiles('**/configure.ac', '.github/workflows/build-test.yml') }}
+
+      - name: Set Release Flag for Full Releases
+        if: github.event_name == 'release' && !github.event.release.prerelease
+        shell: bash
+        run: |
+          sed -i 's/_CLIENT_VERSION_IS_RELEASE, false/_CLIENT_VERSION_IS_RELEASE, true/' configure.ac
+          sed -i 's/#define CLIENT_VERSION_IS_RELEASE false/#define CLIENT_VERSION_IS_RELEASE true/' src/clientversion.h
+      - name: Build Fairbrix
+        shell: bash
+        run: |
+          depends/${{ matrix.host }}/native/bin/ccache --max-size="$CCACHE_SIZE"
+          ./autogen.sh
+          autoupdate
+          CONFIG_OPTS="${{ matrix.config-opts }}"
+          if [ "${{ matrix.run-tests }}" = "false" ]; then
+            CONFIG_OPTS="$CONFIG_OPTS --disable-tests"
+          fi
+          if [ "${{ matrix.run-bench }}" = "false" ]; then
+            CONFIG_OPTS="$CONFIG_OPTS --disable-bench"
+          fi
+          ./configure --prefix="$PWD"/depends/${{ matrix.host }} $CONFIG_OPTS --enable-reduce-exports || ( cat config.log && false)
+          make "$MAKEJOBS" ${{ matrix.goal }} || ( echo "Build failure. Verbose build follows." && make ${{ matrix.goal }} V=1 ; false )
+      - name: Run benchmark
+        if: ${{ matrix.run-bench }}
+        shell: bash
+        run: |
+          src/bench/bench_fairbrix > ${{ matrix.name }}-bench.csv
+          cat ${{ matrix.name }}-bench.csv
+      - name: Run tests
+        if: ${{ matrix.run-tests }}
+        shell: bash
+        run: |
+          make check "$MAKEJOBS" VERBOSE=1
+          qa/pull-tester/install-deps.sh
+          qa/pull-tester/rpc-tests.py --coverage
+      - name: Check security
+        if: ${{ matrix.check-security }}
+        shell: bash
+        run: make -C src check-security
+
+      - name: Check symbols
+        if: ${{ matrix.check-symbols }}
+        shell: bash
+        run: make -C src check-symbols
+
+      - name: Bundle artifacts
+        shell: bash
+        run: |
+          if [ ${{ github.ref_type }} == "tag" ]; then
+            ARTIFACT_VERSION="${{ github.ref_name }}"
+            echo "ARTIFACT_VERSION=$ARTIFACT_VERSION" >> "$GITHUB_ENV"
+            echo "RELEASE_TAG=$ARTIFACT_VERSION" >> "$GITHUB_ENV"
+          else
+            GIT_SHORT_HASH="$(echo "${GITHUB_SHA}" | cut -c1-8)"
+            ARTIFACT_VERSION="$GIT_SHORT_HASH"
+            echo "GIT_SHORT_HASH=$GIT_SHORT_HASH" >> "$GITHUB_ENV"
+            echo "ARTIFACT_VERSION=$GIT_SHORT_HASH" >> "$GITHUB_ENV"
+          fi
+          mkdir -p fairbrix-"$ARTIFACT_VERSION"-${{ matrix.name }}
+          cp -a depends/${{ matrix.host }}/bin/fairbrix* fairbrix-"$ARTIFACT_VERSION"-${{ matrix.name }}/
+          chmod +x fairbrix-"$ARTIFACT_VERSION"-${{ matrix.name }}/fairbrix*
+          7z a -tzip fairbrix-"$ARTIFACT_VERSION"-${{ matrix.name }}.zip fairbrix-"$ARTIFACT_VERSION"-${{ matrix.name }}
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fairbrix-${{ env.ARTIFACT_VERSION }}-${{ matrix.name }}.zip
+          path: |
+            fairbrix-${{ env.ARTIFACT_VERSION }}-${{ matrix.name }}.zip
+            ${{ matrix.name }}-bench.csv
+      - name: Upload release artifacts
+        if: ${{ github.event_name == 'release' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release upload \
+            --repo ${{ github.repository }} \
+            ${{ env.RELEASE_TAG }} \
+            fairbrix-${{ env.ARTIFACT_VERSION }}-${{ matrix.name }}.zip
