@@ -124,8 +124,8 @@ jobs:
             packages: bc python3-zmq
             run-bench: true
             run-tests: false
-            dep-opts: "AVX2=1"
-            config-opts: "--with-intel-avx2 --enable-gui=qt5 --enable-zmq --enable-glibc-back-compat --enable-reduce-exports"
+            dep-opts: ""
+            config-opts: "--enable-gui=qt5 --enable-zmq --enable-glibc-back-compat --enable-reduce-exports"
             goal: install
 
     runs-on: ${{ matrix.os }}
